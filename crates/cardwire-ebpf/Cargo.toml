@@ -1,0 +1,12 @@
+[package]
+name = "cardwire-ebpf"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+aya = "0.13.1"
+tokio.workspace = true

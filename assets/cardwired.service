@@ -1,0 +1,17 @@
+[Unit]
+Description=Cardwire Daemon
+Before=graphical.target
+Before=multi-user.target
+Before=display-manager.service
+Before=nvidia-powerd.service
+
+
+[Service]
+Type=dbus
+BusName=com.cardwire.daemon
+ExecStart=/usr/bin/cardwired
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=getty.target

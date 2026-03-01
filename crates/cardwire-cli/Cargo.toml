@@ -1,0 +1,18 @@
+[package]
+name = "cardwire-cli"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CLI for cardwire GPU management"
+
+[dependencies]
+tokio.workspace = true
+zbus.workspace = true
+clap.workspace = true
+
+[[bin]]
+name = "cardwire"
+path = "src/main.rs"

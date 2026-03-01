@@ -1,0 +1,24 @@
+[package]
+name = "cardwire-daemon"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Daemon for cardwire GPU management"
+
+[dependencies]
+cardwire-core = { path = "../cardwire-core" }
+cardwire-ebpf = { path = "../cardwire-ebpf" }
+tokio.workspace = true
+zbus.workspace = true
+config.workspace = true
+serde.workspace = true
+log.workspace = true
+env_logger = "0.11"
+toml = "1.0.3"
+
+[[bin]]
+name = "cardwired"
+path = "src/daemon.rs"

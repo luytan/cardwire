@@ -1,0 +1,41 @@
+use zbus::{Proxy, connection::Connection};
+
+pub type GpuRow = (u32, String, String, String, bool, bool);
+
+pub struct DaemonClient<'a> {
+    proxy: Proxy<'a>,
+}
+
+impl<'a> DaemonClient<'a> {
+    pub async fn connect(connection: &'a Connection) -> zbus::Result<Self> {
+        let proxy = zbus::Proxy::new(
+            connection,
+            "com.cardwire.daemon",
+            "/com/cardwire/daemon",
+            "com.cardwire.daemon",
+        )
+        .await?;
+
+        Ok(Self { proxy })
+    }
+
+    pub async fn set_mode(&self, mode: String) -> zbus::Result<String> {
+        self.proxy.call("SetMode", &(mode,)).await
+    }
+
+    pub async fn get_mode(&self) -> zbus::Result<String> {
+        self.proxy.call("GetMode", &()).await
+    }
+
+    pub async fn list_gpus(&self) -> zbus::Result<Vec<GpuRow>> {
+        self.proxy.call("ListGpus", &()).await
+    }
+
+    pub async fn set_gpu_block(&self, id: u32, blocked: bool) -> zbus::Result<String> {
+        self.proxy.call("SetGpuBlock", &(id, blocked)).await
+    }
+
+    pub async fn get_gpu_info(&self) -> zbus::Result<String> {
+        self.proxy.call("GetGpuInfo", &()).await
+    }
+}

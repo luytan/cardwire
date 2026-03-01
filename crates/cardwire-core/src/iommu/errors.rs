@@ -1,0 +1,16 @@
+use std::path::PathBuf;
+use std::io;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+
+pub enum IommuError {
+    #[error("IOMMU Not Enabled")]
+    NotEnabled,
+
+    #[error("Missing 'devices' directory in group path: {0}")]
+    MissingDevicesDir(PathBuf),
+
+    #[error("IO Error: {0}")]
+    Io(#[from] io::Error),
+}
