@@ -2,6 +2,7 @@ use std::path::Path;
 use tokio::fs;
 use crate::models::Modes;
 use serde::{Deserialize, Serialize};
+use log::warn;
 use toml;
 use std::error::Error;
 
@@ -18,14 +19,28 @@ impl Config {
         match fs::read_to_string(config_path).await {
             Ok(content) => match toml::from_str(&content) {
                 Ok(config) => config,
-                Err(_) => Config::default(),
+                Err(err) => {
+                    warn!("Invalid config file at {}: {}. Recreating default config.", CONFIG_PATH, err);
+                    let config = Config::default();
+                    if let Err(save_err) = config.save_mode_to_config() {
+                        warn!("Failed to save default config to {}: {}", CONFIG_PATH, save_err);
+                    }
+                    config
+                }
             },
-            Err(_) => Config::default(),
+            Err(err) => {
+                warn!("Could not read config at {}: {}. Creating default config.", CONFIG_PATH, err);
+                let config = Config::default();
+                if let Err(save_err) = config.save_mode_to_config() {
+                    warn!("Failed to save default config to {}: {}", CONFIG_PATH, save_err);
+                }
+                config
+            }
         }
     }
 
     pub fn save_mode_to_config(&self) -> Result<(), Box<dyn Error>> {
-        let toml: String = toml::to_string(self).unwrap();
+        let toml: String = toml::to_string(self)?;
         std::fs::write(CONFIG_PATH, toml)?;
         Ok(())
     }
