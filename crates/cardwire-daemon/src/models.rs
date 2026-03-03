@@ -10,9 +10,6 @@ use cardwire_core::iommu::Device;
 use cardwire_ebpf::EbpfBlocker;
 use tokio::sync::{Mutex, RwLock};
 
-
-pub type GpuRow = (u32, String, String, String, bool, bool);
-
 #[derive(Deserialize, Serialize, PartialEq, zbus::zvariant::Type, Clone, Copy)]
 pub enum Modes {
     Integrated,

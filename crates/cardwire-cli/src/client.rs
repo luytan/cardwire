@@ -1,7 +1,5 @@
 use zbus::{Proxy, connection::Connection};
-
-pub type GpuRow = (u32, String, String, String, bool, bool);
-
+use cardwire_core::gpu::GpuRow;
 pub struct DaemonClient<'a> {
     proxy: Proxy<'a>,
 }

@@ -9,6 +9,7 @@ license.workspace = true
 description = "CLI for cardwire GPU management"
 
 [dependencies]
+cardwire-core = { path = "../cardwire-core" }
 tokio.workspace = true
 zbus.workspace = true
 clap.workspace = true

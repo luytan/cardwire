@@ -1,5 +1,4 @@
-use crate::client::GpuRow;
-
+use cardwire_core::gpu::GpuRow;
 pub fn print_gpu_table(rows: &[GpuRow]) {
     let mut id_w = 2usize;
     let mut name_w = 4usize;

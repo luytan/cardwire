@@ -34,3 +34,6 @@ impl Gpu {
     }
 
 }
+
+// GpuRow for display
+pub type GpuRow = (u32, String, String, String, bool, bool);
