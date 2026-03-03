@@ -87,7 +87,7 @@ int BPF_PROG(file_open, struct file *file) {
             }
         }
     }
-    // Match config under PCI device directory.
+// Match config under PCI device directory.
     else if (buf[0] == 'c' && buf[1] == 'o' && buf[2] == 'n' && buf[3] == 'f' && 
              buf[4] == 'i' && buf[5] == 'g' && buf[6] == '\0') {
         
@@ -95,19 +95,20 @@ int BPF_PROG(file_open, struct file *file) {
         const unsigned char *parent_name = BPF_CORE_READ(parent, d_name.name);
         
         if (parent_name) {
-            char pci_addr[16] = {0};
+            char pci_addr[12] = {0};
             bpf_probe_read_kernel_str(&pci_addr, sizeof(pci_addr), parent_name);
             
             // Accept only PCI-like parent names: 0000:00:00.0.
             if (pci_addr[4] == ':' && pci_addr[7] == ':' && pci_addr[10] == '.') {
-                // PCI address length is 12 chars.
-                pci_addr[12] = '\0';
                 
-                bpf_printk("Checking config for PCI: %s", pci_addr);
+                // Force the function number to always be '0'
+                // This converts "0000:03:00.1" -> "0000:03:00.0"
+                pci_addr[11] = '0'; 
+                pci_addr[12] = '\0'; 
                 
+                // Now look up the base address in the map
                 u8 *value = bpf_map_lookup_elem(&BLOCKED_PCI, &pci_addr);
                 if (value && *value == 1) {
-                    bpf_printk("Blocked config for PCI: %s", pci_addr);
                     return -2; // -ENOENT
                 }
             }
