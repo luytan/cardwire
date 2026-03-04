@@ -4,7 +4,7 @@ use zbus::{fdo, interface};
 
 use crate::config::Config;
 use crate::models::{Daemon, Modes};
-use cardwire_core::gpu::{GpuRow, block_gpu};
+use cardwire_core::gpu::{GpuRow, block_gpu, is_gpu_blocked};
 #[interface(name = "com.cardwire.daemon")]
 impl Daemon {
     pub(crate) async fn set_mode(&self, mode: String) -> fdo::Result<String> {
@@ -68,7 +68,7 @@ impl Daemon {
         )
     }
 
-    pub(crate) async fn set_gpu_block(&self, gpu_id: u32, blocked: bool) -> fdo::Result<String> {
+    pub(crate) async fn set_gpu_block(&self, gpu_id: u32, block: bool) -> fdo::Result<String> {
         let gpu = self
             .state
             .gpu_list
@@ -76,28 +76,21 @@ impl Daemon {
             .ok_or_else(|| fdo::Error::InvalidArgs(format!("Unknown gpu id={}", gpu_id)))?;
 
         // block gpu
-        let now_blocked = true;
+        let mut blocker = self.state.ebpf_blocker.lock().await;
+        block_gpu(&mut blocker, gpu, block).map_err(|err| fdo::Error::Failed(err.to_string()))?;
+        
+
         info!(
-            "Set GPU {} ({}) block={} (effective={})",
+            "Set GPU {} ({}) block={}",
             gpu_id,
             gpu.pci_address(),
-            blocked,
-            now_blocked
+            block
         );
 
         Ok(format!(
-            "GPU {} block {} (effective={})",
+            "GPU {} block {}",
             gpu_id,
-            if blocked { "on" } else { "off" },
-            now_blocked
-        ))
-    }
-
-    pub(crate) async fn get_gpu_info(&self) -> fdo::Result<String> {
-        Ok(format!(
-            "GPU 1:\n
-            Name: Radeon
-            "
+            if block { "on" } else { "off" }
         ))
     }
 
