@@ -9,7 +9,7 @@ use cardwire_core::iommu;
 use cardwire_core::iommu::Device;
 use cardwire_ebpf::EbpfBlocker;
 use log::warn;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 #[derive(Deserialize, Serialize, PartialEq, zbus::zvariant::Type, Clone, Copy)]
 pub enum Modes {
@@ -58,7 +58,7 @@ impl Daemon {
                 config: tokio::sync::RwLock::new(config),
                 _pci_devices: pci_devices,
                 gpu_list,
-                ebpf_blocker: tokio::sync::Mutex::new(ebpf_blocker),
+                ebpf_blocker: tokio::sync::RwLock::new(ebpf_blocker),
             },
         })
     }
@@ -69,7 +69,7 @@ pub struct DaemonState {
     pub gpu_list: HashMap<usize, gpu::Gpu>,
     // for future uses, related to vfio
     pub _pci_devices: HashMap<String, Device>,
-    pub ebpf_blocker: Mutex<EbpfBlocker>,
+    pub ebpf_blocker: RwLock<EbpfBlocker>,
 }
 impl DaemonState {
     pub async fn get_mode(&self) -> Modes {

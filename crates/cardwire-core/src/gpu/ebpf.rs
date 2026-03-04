@@ -3,7 +3,7 @@ use cardwire_ebpf::EbpfBlocker;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
 
-pub fn is_gpu_blocked(blocker: &mut EbpfBlocker, gpu: &Gpu) -> Result<bool, Box<dyn std::error::Error>> {
+pub fn is_gpu_blocked(blocker: &EbpfBlocker, gpu: &Gpu) -> Result<bool, Box<dyn std::error::Error>> {
     let (card_id, render_id) = gpu_node_ids(gpu)?;
     Ok(
         blocker.is_pci_blocked(gpu.pci_address())?

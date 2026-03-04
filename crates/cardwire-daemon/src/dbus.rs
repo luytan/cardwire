@@ -33,7 +33,7 @@ impl Daemon {
                 let block: bool = mode == Modes::Integrated;
                 // Loop to find the non default gpu and block it,
                 // TODO: better method?
-                let mut blocker = self.state.ebpf_blocker.lock().await;
+                let mut blocker = self.state.ebpf_blocker.write().await;
                 for gpu in self.state.gpu_list.values() {
                     if !gpu.is_default() {
                         block_gpu(&mut blocker, gpu, block)
@@ -76,7 +76,7 @@ impl Daemon {
             .ok_or_else(|| fdo::Error::InvalidArgs(format!("Unknown gpu id={}", gpu_id)))?;
 
         // block gpu
-        let mut blocker = self.state.ebpf_blocker.lock().await;
+        let mut blocker = self.state.ebpf_blocker.write().await;
         block_gpu(&mut blocker, gpu, block).map_err(|err| fdo::Error::Failed(err.to_string()))?;
         
 
@@ -97,9 +97,9 @@ impl Daemon {
     pub(crate) async fn list_gpus(&self) -> Vec<GpuRow> {
         //self.list_gpu_rows().await
         let mut rows = Vec::with_capacity(self.state.gpu_list.len());
-        let mut blocker = self.state.ebpf_blocker.lock().await;
+        let blocker = self.state.ebpf_blocker.read().await;
         for gpu in self.state.gpu_list.values() {
-            let blocked: bool = is_gpu_blocked(&mut blocker, gpu).expect("Couldn't check gpu's lock state");
+            let blocked: bool = is_gpu_blocked(&blocker, gpu).expect("Couldn't check gpu's lock state");
             rows.push((
                 gpu.id() as u32,
                 gpu.name().to_string(),

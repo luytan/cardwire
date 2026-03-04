@@ -80,7 +80,7 @@ impl EbpfBlocker {
         Ok(())
     }
 
-    pub fn is_id_blocked(&mut self, id: u32) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn is_id_blocked(&self, id: u32) -> Result<bool, Box<dyn std::error::Error>> {
         let map: HashMap<_, u32, u8> = HashMap::try_from(
             self.ebpf
                 .map("BLOCKED_IDS")
@@ -93,7 +93,7 @@ impl EbpfBlocker {
         }
     }
 
-    pub fn is_pci_blocked(&mut self, pci: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    pub fn is_pci_blocked(&self, pci: &str) -> Result<bool, Box<dyn std::error::Error>> {
         let map: HashMap<_, [u8; 16], u8> = HashMap::try_from(
             self.ebpf
                 .map("BLOCKED_PCI")
