@@ -28,7 +28,7 @@ impl EbpfBlocker {
             };
         };
 
-        // Method 2
+        // Method 2 if the first one didnt work
         let file = match File::open("/proc/config.gz") {
             Ok(f) => f,
             Err(_) => return Err(CardwireBPFError::LSMNotEnabled),
@@ -48,7 +48,10 @@ impl EbpfBlocker {
 
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         Self::is_bpf_enabled()?;
-        let mut ebpf = Ebpf::load_file(concat!(env!("OUT_DIR"), "/bpf.o"))?;
+        let mut ebpf = Ebpf::load(aya::include_bytes_aligned!(concat!(
+            env!("OUT_DIR"),
+            "/bpf.o"
+        )))?;
 
         let btf = Btf::from_sys_fs()?;
 
