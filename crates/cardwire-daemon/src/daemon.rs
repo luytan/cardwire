@@ -19,8 +19,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let conn_builder = connection::Builder::system()?;
     let _conn = conn_builder
-        .name("com.cardwire.daemon")?
-        .serve_at("/com/cardwire/daemon", daemon)?
+        .name("com.github.luytan.cardwire")?
+        .serve_at("/com/github/luytan/cardwire", daemon)?
         .build()
         .await?;
 

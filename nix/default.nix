@@ -5,7 +5,8 @@
   toolchain,
 }:
 let
-  version = "0.1.0";
+  cargoToml = builtins.fromTOML (builtins.readFile ../Cargo.toml);
+  version = cargoToml.workspace.package.version;
   runtimeDeps = [
     pkgs.hwdata
   ];
@@ -40,7 +41,7 @@ in
     '';
     # Copy dbus conf
     postInstall = ''
-      install -Dm444 ./assets/com.cardwire.daemon.conf \
-      $out/share/dbus-1/system.d/com.cardwire.daemon.conf
+      install -Dm444 ./assets/com.github.luytan.cardwire.conf \
+      $out/share/dbus-1/system.d/com.github.luytan.cardwire.conf
     '';
   }

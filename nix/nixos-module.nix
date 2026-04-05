@@ -37,7 +37,7 @@ in
       };
       serviceConfig = {
         Type = "dbus";
-        BusName = "com.cardwire.daemon";
+        BusName = "com.github.luytan.cardwire";
         ExecStart = "${self.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/cardwired";
       };
       wantedBy = [ "multi-user.target" ];

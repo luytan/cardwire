@@ -5,7 +5,7 @@ use zbus::{fdo, interface};
 use crate::config::Config;
 use crate::models::{Daemon, Modes};
 use cardwire_core::gpu::{GpuRow, block_gpu, is_gpu_blocked};
-#[interface(name = "com.cardwire.daemon")]
+#[interface(name = "com.github.luytan.cardwire")]
 impl Daemon {
     pub(crate) async fn set_mode(&self, mode: String) -> fdo::Result<String> {
         let mode = match mode.to_ascii_lowercase().as_str() {
