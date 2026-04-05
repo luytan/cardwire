@@ -1,13 +1,13 @@
-mod dbus;
 mod config;
+mod dbus;
 mod models;
 
 use std::{error::Error, future::pending};
 
+use crate::models::Daemon;
 use config::Config;
 use log::info;
 use zbus::connection;
-use crate::models::{Daemon};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // log

@@ -1,5 +1,5 @@
-use zbus::{Proxy, connection::Connection};
 use cardwire_core::gpu::GpuRow;
+use zbus::{Proxy, connection::Connection};
 pub struct DaemonClient<'a> {
     proxy: Proxy<'a>,
 }

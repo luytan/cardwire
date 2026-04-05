@@ -3,17 +3,21 @@ use cardwire_ebpf::EbpfBlocker;
 use std::io::{Error as IoError, ErrorKind};
 use std::path::Path;
 
-pub fn is_gpu_blocked(blocker: &EbpfBlocker, gpu: &Gpu) -> Result<bool, Box<dyn std::error::Error>> {
+pub fn is_gpu_blocked(
+    blocker: &EbpfBlocker,
+    gpu: &Gpu,
+) -> Result<bool, Box<dyn std::error::Error>> {
     let (card_id, render_id) = gpu_node_ids(gpu)?;
-    Ok(
-        blocker.is_pci_blocked(gpu.pci_address())?
-            && blocker.is_card_blocked(card_id)?
-            && blocker.is_render_blocked(render_id)?,
-    )
+    Ok(blocker.is_pci_blocked(gpu.pci_address())?
+        && blocker.is_card_blocked(card_id)?
+        && blocker.is_render_blocked(render_id)?)
 }
 
-
-pub fn block_gpu(blocker: &mut EbpfBlocker, gpu: &Gpu, block: bool) -> Result<(), Box<dyn std::error::Error>> {
+pub fn block_gpu(
+    blocker: &mut EbpfBlocker,
+    gpu: &Gpu,
+    block: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     let (card_id, render_id) = gpu_node_ids(gpu)?;
 
     if block {
@@ -39,12 +43,24 @@ fn parse_node_id(node_path: &str, prefix: &str) -> Result<u32, Box<dyn std::erro
     let node = Path::new(node_path)
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| IoError::new(ErrorKind::InvalidData, format!("Invalid DRM node path: {}", node_path)))?;
-    let id = node
-        .strip_prefix(prefix)
-        .ok_or_else(|| IoError::new(ErrorKind::InvalidData, format!("Unexpected DRM node name: {}", node)))?;
+        .ok_or_else(|| {
+            IoError::new(
+                ErrorKind::InvalidData,
+                format!("Invalid DRM node path: {}", node_path),
+            )
+        })?;
+    let id = node.strip_prefix(prefix).ok_or_else(|| {
+        IoError::new(
+            ErrorKind::InvalidData,
+            format!("Unexpected DRM node name: {}", node),
+        )
+    })?;
     if id.is_empty() || !id.chars().all(|ch| ch.is_ascii_digit()) {
-        return Err(IoError::new(ErrorKind::InvalidData, format!("Invalid DRM node id: {}", node)).into());
+        return Err(IoError::new(
+            ErrorKind::InvalidData,
+            format!("Invalid DRM node id: {}", node),
+        )
+        .into());
     }
     Ok(id.parse()?)
 }

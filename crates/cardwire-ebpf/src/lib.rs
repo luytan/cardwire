@@ -1,12 +1,12 @@
 mod errors;
 
+use crate::errors::CardwireBPFError;
 use aya::maps::{HashMap, MapError};
 use aya::programs::Lsm;
 use aya::{Btf, Ebpf};
 use flate2::read::GzDecoder;
 use std::fs::File;
 use std::io::{BufReader, Error as IoError, ErrorKind, Read};
-use crate::errors::CardwireBPFError;
 
 pub struct EbpfBlocker {
     ebpf: Ebpf,
@@ -46,14 +46,14 @@ impl EbpfBlocker {
     }
 
     /*
-        Checks if bpf/lsm is enabled in the kernel
-     */
+       Checks if bpf/lsm is enabled in the kernel
+    */
     fn is_bpf_enabled() -> Result<(), CardwireBPFError> {
         // Method 1
         if let Ok(lsm) = std::fs::read_to_string("/sys/kernel/security/lsm") {
-            match lsm.contains("bpf"){
+            match lsm.contains("bpf") {
                 true => return Ok(()),
-                false => return Err(CardwireBPFError::LSMNotEnabled)
+                false => return Err(CardwireBPFError::LSMNotEnabled),
             };
         };
 
@@ -69,15 +69,15 @@ impl EbpfBlocker {
 
         gz.read_to_string(&mut config)?;
 
-        match config.contains("CONFIG_BPF_LSM=y"){
+        match config.contains("CONFIG_BPF_LSM=y") {
             true => return Ok(()),
-            false => return Err(CardwireBPFError::LSMNotEnabled)
+            false => return Err(CardwireBPFError::LSMNotEnabled),
         }
     }
 
     /*
-        This part is for blocking a specific CardID
-     */
+       This part is for blocking a specific CardID
+    */
 
     pub fn block_card(&mut self, id: u32) -> Result<(), Box<dyn std::error::Error>> {
         let mut map: HashMap<_, u32, u8> = HashMap::try_from(
@@ -112,8 +112,8 @@ impl EbpfBlocker {
         }
     }
     /*
-        This part is for blocking a specific RenderID
-     */
+       This part is for blocking a specific RenderID
+    */
 
     pub fn block_render(&mut self, id: u32) -> Result<(), Box<dyn std::error::Error>> {
         let mut map: HashMap<_, u32, u8> = HashMap::try_from(
@@ -148,8 +148,8 @@ impl EbpfBlocker {
         }
     }
     /*
-        This part is for blocking a specific PCI
-     */
+       This part is for blocking a specific PCI
+    */
     pub fn block_pci(&mut self, pci: &str) -> Result<(), Box<dyn std::error::Error>> {
         let mut map: HashMap<_, [u8; 16], u8> = HashMap::try_from(
             self.ebpf
