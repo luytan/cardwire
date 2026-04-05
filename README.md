@@ -2,7 +2,9 @@
 
 a GPU manager for Linux using eBPF LSM hooks to block/hide GPUs
 # WARNING!!
-This project is in early development. Expect bugs and incomplete functionality
+- This project is in early development. Expect bugs and incomplete functionality
+- It doesnt work with NVIDIA GPUs, since i do not own one, feel free to PR this
+- Makefile was AI-generated, i only use the flake.nix, be careful
 ## Prerequisites
 
 Before using `cardwire`, ensure your system meets these requirements:
