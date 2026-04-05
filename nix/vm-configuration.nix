@@ -39,5 +39,11 @@
       ];
     };
   };
+  programs.bash = {
+    enable = true;
+    shellAliases = {
+      shut = "sudo shutdown -h now";
+    };
+  };
   system.stateVersion = "26.06";
 }
