@@ -31,7 +31,7 @@ fn build_gpu(device: &Device) -> io::Result<Gpu> {
         .join(&device.pci_address)
         .join("boot_vga");
     let is_default = fs::read_to_string(boot_vga_path)?.trim() == "1";
-    let nvidia: bool = &device.vendor_id == "10de";
+    let nvidia: bool = &device.vendor_id == "0x10de";
     let nvidia_minor: u32 = if nvidia {
         nvidia_get_minor(&device.pci_address).unwrap_or(99)
     } else {
