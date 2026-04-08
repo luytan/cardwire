@@ -37,6 +37,9 @@ impl Gpu {
     pub fn is_nvidia(&self) -> &bool {
         &self.nvidia
     }
+    pub fn nvidia_minor(&self) -> &u32 {
+        &self.nvidia_minor
+    }
 }
 
 // GpuRow for display
