@@ -29,7 +29,7 @@ pub fn block_gpu(
         blocker.block_card(card_id)?;
         blocker.block_render(render_id)?;
         blocker.block_pci(gpu.pci_address())?;
-        if gpu.nvidia == true {
+        if gpu.nvidia {
             blocker.block_nvidia(*gpu.nvidia_minor())?
         }
         Ok(())
@@ -37,7 +37,7 @@ pub fn block_gpu(
         blocker.unblock_card(card_id)?;
         blocker.unblock_render(render_id)?;
         blocker.unblock_pci(gpu.pci_address())?;
-        if gpu.nvidia == true {
+        if gpu.nvidia {
             blocker.unblock_nvidia(*gpu.nvidia_minor())?
         }
         Ok(())

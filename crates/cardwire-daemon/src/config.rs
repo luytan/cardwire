@@ -5,7 +5,6 @@ use std::error::Error;
 use std::path::Path;
 use std::path::PathBuf;
 use tokio::fs;
-use toml;
 
 const CONFIG_PATH: &str = "/var/lib/cardwire/cardwire.toml";
 

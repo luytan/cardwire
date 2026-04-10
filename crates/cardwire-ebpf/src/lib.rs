@@ -70,8 +70,8 @@ impl EbpfBlocker {
         gz.read_to_string(&mut config)?;
 
         match config.contains("CONFIG_BPF_LSM=y") {
-            true => return Ok(()),
-            false => return Err(CardwireBPFError::LSMNotEnabled),
+            true => Ok(()),
+            false => Err(CardwireBPFError::LSMNotEnabled),
         }
     }
 

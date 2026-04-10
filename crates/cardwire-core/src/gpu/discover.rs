@@ -13,7 +13,7 @@ pub fn read_gpu(pci_devices: &HashMap<String, Device>) -> io::Result<HashMap<usi
             device.class.as_str() == "0x030000" || // VGA compatible controller
             device.class.as_str() == "0x038000"
         }) // Display controller
-        .map(|device| build_gpu(device))
+        .map(build_gpu)
         .collect::<io::Result<Vec<_>>>()?;
 
     // Default GPU gets ID 0, rest ordered by PCI address
@@ -68,7 +68,7 @@ fn nvidia_get_minor(pci_address: &str) -> Option<u32> {
         .ok()
 }
 fn check_default(pci_address: &str) -> io::Result<bool> {
-    let fb0_path = format!("/sys/class/graphics/fb0");
+    let fb0_path = "/sys/class/graphics/fb0";
     match fs::canonicalize(fb0_path) {
         Ok(content) => Ok(content.to_string_lossy().contains(pci_address)),
         Err(_) => Ok(false),
