@@ -58,6 +58,10 @@
           RUST_BACKTRACE = "1";
           inherit (self.checks.${system}.pre-commit-check) shellHook;
         };
+        vm-test = import ./nix/integration-test.nix {
+          inherit pkgs system self;
+          lib = nixpkgs.lib;
+        };
       });
       nixosModules.default = import ./nix/nixos-module.nix self;
       nixosConfigurations = nixpkgs.lib.genAttrs supportedSystems (
@@ -67,10 +71,6 @@
         }
       );
       checks = forAllSystems (system: {
-        vm-test = import ./nix/integration-test.nix {
-          inherit pkgs system self;
-          lib = nixpkgs.lib;
-        };
         pre-commit-check = git-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
