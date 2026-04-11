@@ -51,17 +51,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
         }
         Commands::Get => {
-            let response_result = client.get_mode().await;
-            match response_result {
+            match client.get_mode().await {
                 Ok(response) => eprintln!("{}", response),
                 Err(e) => handle_error(e),
             };
         }
         Commands::List { full: _, json: _ } => {
-            let mut response: Vec<(u32, String, String, String, bool, bool)> =
-                client.list_gpus().await?;
-            response.sort_by_key(|row| row.0);
-            output::print_gpu_table(&response);
+            //let mut response: Vec<(u32, String, String, String, bool, bool)> =
+            //    client.list_gpus().await?;
+            //response.sort_by_key(|row| row.0);
+            //output::print_gpu_table(&response);
+            match client.list_gpus().await {
+                Ok(mut response) => {
+                    response.sort_by_key(|row| row.0);
+                    output::print_gpu_table(&response);
+                }
+                Err(e) => handle_error(e),
+            }
         }
         Commands::Gpu { id, action } => {
             match client.set_gpu_block(id, action.block).await {
