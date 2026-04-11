@@ -1,6 +1,8 @@
 name: clippy-check
 on:
   pull_request:
+    path:
+      - 'crates/**'
 env:
   RUSTFLAGS: "-Dwarnings"
 jobs:
