@@ -1,61 +1,56 @@
 mod args;
-mod client;
+mod dbus;
 mod output;
-
+use args::{Args, CliMode, Commands};
 use clap::Parser;
-
-use args::{Args, Commands, GpuCommands};
-use client::DaemonClient;
+use dbus::DaemonClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let connection = zbus::connection::Builder::system()?.build().await?;
-    let client = DaemonClient::connect(&connection).await?;
+    let connection: zbus::Connection = zbus::connection::Builder::system()?.build().await?;
+    let client: DaemonClient<'_> = DaemonClient::connect(&connection).await?;
 
     match args.command {
         Commands::Set { mode } => {
+            let mode_string = match mode {
+                CliMode::Integrated => "integrated".to_string(),
+                CliMode::Hybrid => "hybrid".to_string(),
+                CliMode::Manual => "manual".to_string(),
+            };
+
             //let response = client.set_mode(mode).await;
-            match client.set_mode(mode).await {
+            match client.set_mode(mode_string).await {
                 Ok(response) => println!("{}", response),
                 Err(zbus::Error::MethodError(name, description, _)) => {
-                    println!("{}", description.unwrap_or_else(|| name.to_string()))
+                    eprintln!("{}", description.unwrap_or_else(|| name.to_string()))
                 }
-                Err(e) => println!("Error: {e:?}"),
+                Err(e) => eprintln!("Error: {e:?}"),
             };
         }
         Commands::Get => {
             let response_result = client.get_mode().await;
             match response_result {
-                Ok(response) => println!("{}", response),
-                Err(e) => println!("Error: {e:?}"),
+                Ok(response) => eprintln!("{}", response),
+                Err(e) => eprintln!("Error: {e:?}"),
             };
         }
-        Commands::List => {
-            let mut response = client.list_gpus().await?;
+        Commands::List { full: _, json: _ } => {
+            let mut response: Vec<(u32, String, String, String, bool, bool)> =
+                client.list_gpus().await?;
             response.sort_by_key(|row| row.0);
             output::print_gpu_table(&response);
         }
-        Commands::Gpu { id, command } => match command {
-            GpuCommands::Block { state } => {
-                let blocked = match state.as_str() {
-                    "on" => true,
-                    "off" => false,
-                    _ => {
-                        return Err(
-                            format!("Invalid state '{}'. Expected: on or off", state).into()
-                        );
-                    }
-                };
-                let response = client.set_gpu_block(id, blocked).await?;
-                println!("{}", response);
-            }
-            GpuCommands::Info => {
-                let response = client.get_gpu_info().await?;
-                println!("{}", response);
-            }
-        },
+        Commands::Gpu { id, action } => {
+            match client.set_gpu_block(id, action.block).await {
+                Ok(response) => println!("{}", response),
+                Err(zbus::Error::MethodError(name, description, _)) => {
+                    eprintln!("Error: {}", description.unwrap_or_else(|| name.to_string()))
+                }
+                Err(e) => eprintln!("Error: {e:?}"),
+            };
+        }
     }
 
     Ok(())
