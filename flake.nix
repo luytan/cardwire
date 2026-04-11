@@ -52,6 +52,7 @@
             (toolchainFor system)
             (pkgs system).clang
             (pkgs system).libbpf
+            (pkgs system).yamlfmt
           ]
           ++ self.checks.${system}.pre-commit-check.enabledPackages;
           RUST_SRC_PATH = "${(fenixpkgs system).stable.rust-src}/lib/rustlib/src/rust/library";
@@ -77,6 +78,7 @@
             nixfmt.enable = true;
             rustfmt.enable = true;
             clang-format.enable = true;
+            yamlfmt.enable = true;
           };
         };
       });
