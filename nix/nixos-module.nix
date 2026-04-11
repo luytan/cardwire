@@ -30,7 +30,7 @@ in
       unitConfig = {
         Description = "Cardwire Daemon";
         After = [
-          "default.target"
+          "dbus.service"
         ];
       };
       serviceConfig = {
@@ -38,7 +38,7 @@ in
         BusName = "com.github.luytan.cardwire";
         ExecStart = "${self.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/cardwired";
       };
-      wantedBy = [ "default.target" ];
+      wantedBy = [ "multi-user.target" ];
     };
   };
 }

@@ -1,6 +1,6 @@
 [Unit]
 Description=Cardwire Daemon
-After=multi-user.target
+After=dbus.service
 
 
 [Service]
@@ -11,4 +11,4 @@ Restart=on-failure
 RestartSec=5s
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
