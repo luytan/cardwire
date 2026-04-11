@@ -20,7 +20,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 CliMode::Manual => "manual".to_string(),
             };
 
-            //let response = client.set_mode(mode).await;
             match client.set_mode(mode_string).await {
                 Ok(response) => println!("{}", response),
                 Err(zbus::Error::MethodError(name, description, _)) => {
