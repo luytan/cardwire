@@ -2,12 +2,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
-use super::errors::IommuError;
+use crate::pci::{IommuError, IommuGroup};
 
-pub struct IommuGroup {
-    pub id: usize,
-    pub devices: Vec<String>,
-}
 pub fn read_iommu_groups() -> Result<BTreeMap<usize, IommuGroup>, IommuError> {
     let base_path = Path::new("/sys/kernel/iommu_groups");
     if base_path.read_dir()?.next().is_none() {
@@ -57,4 +53,11 @@ fn read_group_devices(group_dir: &Path) -> Result<Vec<String>, IommuError> {
     }
 
     Ok(devices)
+}
+
+pub fn is_iommu_enabled() -> bool {
+    match Path::new("/sys/kernel/iommu_groups").read_dir() {
+        Ok(mut iommu_folder) => iommu_folder.next().is_some(),
+        Err(_) => false,
+    }
 }

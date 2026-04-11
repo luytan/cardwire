@@ -55,10 +55,7 @@ impl Daemon {
     }
 
     pub(crate) async fn get_mode(&self) -> String {
-        let current = self.state.get_mode().await;
-
-        //let available_modes = self.list_mode().await.join(", ");
-
+        let current = self.state.mode().await;
         format!(
             "Available modes: {} {} {}\nCurrent Mode: {}",
             Modes::Integrated,

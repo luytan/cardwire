@@ -4,9 +4,9 @@ use std::io;
 use std::path::Path;
 
 use crate::gpu::models::Gpu;
-use crate::iommu::Device;
+use crate::pci::PciDevice;
 
-pub fn read_gpu(pci_devices: &HashMap<String, Device>) -> io::Result<HashMap<usize, Gpu>> {
+pub fn read_gpu(pci_devices: &HashMap<String, PciDevice>) -> io::Result<HashMap<usize, Gpu>> {
     let mut gpus: Vec<Gpu> = pci_devices
         .values()
         .filter(|device| {
@@ -29,7 +29,7 @@ pub fn read_gpu(pci_devices: &HashMap<String, Device>) -> io::Result<HashMap<usi
         .collect())
 }
 
-fn build_gpu(device: &Device) -> io::Result<Gpu> {
+fn build_gpu(device: &PciDevice) -> io::Result<Gpu> {
     let nvidia: bool = device.vendor_id == "0x10de";
     let nvidia_minor: u32 = if nvidia {
         nvidia_get_minor(&device.pci_address).unwrap_or(99)

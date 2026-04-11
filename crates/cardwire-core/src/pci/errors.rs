@@ -13,4 +13,12 @@ pub enum IommuError {
 
     #[error("IO Error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("{0}")]
+    Other(String),
+}
+impl From<&str> for IommuError {
+    fn from(s: &str) -> Self {
+        IommuError::Other(s.to_string())
+    }
 }

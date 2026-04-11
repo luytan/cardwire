@@ -5,8 +5,7 @@ use std::fmt;
 
 use crate::config::Config;
 use cardwire_core::gpu::{self, block_gpu};
-use cardwire_core::iommu;
-use cardwire_core::iommu::Device;
+use cardwire_core::pci;
 use cardwire_ebpf::EbpfBlocker;
 use log::warn;
 use tokio::sync::RwLock;
@@ -34,7 +33,8 @@ pub struct Daemon {
 
 impl Daemon {
     pub fn new(config: Config) -> Result<Self, Box<dyn Error>> {
-        let pci_devices = iommu::read_pci_devices()?;
+        let iommu: bool = pci::is_iommu_enabled();
+        let pci_devices = pci::read_pci_devices()?;
         let gpu_list = gpu::read_gpu(&pci_devices)?;
         let mut ebpf_blocker = cardwire_ebpf::EbpfBlocker::new()?;
 
@@ -60,23 +60,27 @@ impl Daemon {
             state: DaemonState {
                 config: tokio::sync::RwLock::new(config),
                 _pci_devices: pci_devices,
+                _iommu: iommu,
                 gpu_list,
                 ebpf_blocker: tokio::sync::RwLock::new(ebpf_blocker),
             },
         })
     }
 }
-
 pub struct DaemonState {
     pub config: RwLock<Config>,
     pub gpu_list: HashMap<usize, gpu::Gpu>,
-    // for future uses, related to vfio
-    pub _pci_devices: HashMap<String, Device>,
     pub ebpf_blocker: RwLock<EbpfBlocker>,
+    // for future uses, related to vfio
+    pub _pci_devices: HashMap<String, pci::PciDevice>,
+    pub _iommu: bool,
 }
 impl DaemonState {
-    pub async fn get_mode(&self) -> Modes {
+    pub async fn mode(&self) -> Modes {
         let config = self.config.read().await;
         config.mode
+    }
+    pub async fn _is_iommu(&self) -> bool {
+        self._iommu
     }
 }
