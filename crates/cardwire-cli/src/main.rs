@@ -5,6 +5,21 @@ use args::{Args, CliMode, Commands};
 use clap::Parser;
 use dbus::DaemonClient;
 
+fn handle_error(err: zbus::Error) {
+    match err {
+        zbus::Error::MethodError(name, description, _) => {
+            eprintln!("{}", description.unwrap_or_else(|| name.to_string()))
+        }
+        zbus::Error::FDO(fdo_err) => match *fdo_err {
+            zbus::fdo::Error::ServiceUnknown(content) => {
+                eprint!("error: {} \n is the service up?", content)
+            }
+            other => eprintln!("FDO error: {}", other),
+        },
+        e => eprintln!("error: {e:?}"),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -22,17 +37,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             match client.set_mode(mode_string).await {
                 Ok(response) => println!("{}", response),
-                Err(zbus::Error::MethodError(name, description, _)) => {
-                    eprintln!("{}", description.unwrap_or_else(|| name.to_string()))
-                }
-                Err(e) => eprintln!("Error: {e:?}"),
+                Err(e) => handle_error(e),
             };
         }
         Commands::Get => {
             let response_result = client.get_mode().await;
             match response_result {
                 Ok(response) => eprintln!("{}", response),
-                Err(e) => eprintln!("Error: {e:?}"),
+                Err(e) => handle_error(e),
             };
         }
         Commands::List { full: _, json: _ } => {
@@ -44,10 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Gpu { id, action } => {
             match client.set_gpu_block(id, action.block).await {
                 Ok(response) => println!("{}", response),
-                Err(zbus::Error::MethodError(name, description, _)) => {
-                    eprintln!("Error: {}", description.unwrap_or_else(|| name.to_string()))
-                }
-                Err(e) => eprintln!("Error: {e:?}"),
+                Err(e) => handle_error(e),
             };
         }
     }
