@@ -1,42 +1,52 @@
 # cardwire
 
-a GPU manager for Linux using eBPF LSM hooks to block/hide GPUs
-# WARNING!!
+[![AUR](https://img.shields.io/aur/version/cardwire-git)](https://aur.archlinux.org/packages/cardwire-git)
+[![GitHub License](https://img.shields.io/github/license/luytan/cardwire)](https://github.com/luytan/cardwire/blob/main/LICENSE)
+
+a GPU manager for Linux using eBPF LSM hooks to block GPUs
+
+# Disclaimer
 - This project is in early development. Expect bugs and incomplete functionality
 - Makefile was AI-generated, i only use the flake.nix, be careful
-## Prerequisites
-
-Before using `cardwire`, ensure your system meets these requirements:
-
+## Requirements
 - **Linux Kernel**: version 5.7 or later
-- **eBPF LSM Support**: Your kernel must have `CONFIG_BPF_LSM=y`
-
-### How to check:
+- **eBPF LSM**: Your kernel must have `CONFIG_BPF_LSM=y` and you must enable LSM on your system
+## Quick Start
+**Arch:**
 ```bash
-# Check kernel version (should be >= 5.7)
-uname -r
-
-# Check if BPF LSM is enabled in your kernel
-zgrep CONFIG_BPF_LSM /proc/config.gz || grep CONFIG_BPF_LSM /boot/config-$(uname -r)
-
-# Check if 'bpf' is in the active LSM list
-cat /sys/kernel/security/lsm
+yay -S cardwire-git
 ```
+**Nix with flakes:**
 
+flake.nix:
+```nix
+    cardwire = {
+      url = "github:luytan/cardwire";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+```
+then import:
+```nix
+  imports = [
+    inputs.cardwire.nixosModules.default
+  ];
+  services.cardwire.enable = true;
+```
 ## Usage
 
 The `cardwire` CLI allows you to manage GPU states and system modes
 
 ### Modes
+- **Integrated**: Blocks the discrete GPU 
+- **Hybrid**: Unblocks_ the discrete GPU
 - **Manual**: Default mode for safety, allows individual GPU blocking/unblocking
-- **Integrated**: Automatically blocks the discrete GPU 
-- **Hybrid**: Enables the dGPU for use (unblocked)
 
-**Note :** Integrated/Hybrid modes only work on host with two GPUs
-**Note 2 :** Manual mode is not implemented
+_Note: Integrated/Hybrid modes only work on host with two GPUs_
+
+_Note 2: Manual mode is not implemented_
 ```bash
 # Set system mode
-cardwire set integrated/hybrid/manual
+cardwire set integrated / hybrid / manual
 
 # Get current mode status
 cardwire get
@@ -45,21 +55,20 @@ cardwire get
 cardwire list
 
 # Manually block/unblock a specific GPU by ID
-cardwire gpu 1 block on
-cardwire gpu 1 block off
-
-# Get detailed info for a specific GPU, will probably be deprecated
-cardwire gpu 1 info
+cardwire gpu 1 --block
+cardwire gpu 1 --unblock
 ```
 
 ## Configuration
 
-The daemon reads its configuration from `/var/lib/cardwire/cardwire.toml`. If the file is missing, it defaults to `Manual` mode. (Config parsing not tested yet)
+The daemon reads its configuration from `/var/lib/cardwire/cardwire.toml`. If the file is missing, it defaults to `Manual` mode.
 
 ```toml
 # /var/lib/cardwire/cardwire.toml
 mode = "Manual"
+block_vulkan = false
 ```
+`block_vulkan` is an experimental feature that block the nvidia's vulkan icd, must be used with caution
 
 ## Building and Development
 
@@ -95,29 +104,26 @@ sudo make install
 
 ## How it works
 
-Cardwire uses eBPF with LSM hooks to intercept file operations on GPU device nodes, such as `/dev/dri/renderDX` and `/dev/dri/cardX`, and sysfs `config` file
+Cardwire uses eBPF with LSM hooks to intercept file operations on GPU device nodes, such as `/dev/dri/renderDX` and `/dev/dri/cardX`, sysfs `config` and `nvidiaX`
 
-When a GPU is "blocked," the eBPF program returns `-ENOENT` for any `open` syscall targeting that device. This provides several key benefits:
+When a GPU is "blocked," the eBPF program returns `-ENOENT` for any syscall targeting that device. This provides several key benefits:
 
-*   **Instant App Startup:** Prevents applications (like Electron apps) from attempting to initialize the GPU, this eliminates the 3–4 second "hang" typically caused by waiting for a sleeping GPU to power up
+*   **Instant App Startup:** Prevents applications (like Electron apps or GTK apps) from attempting to initialize the GPU, this eliminates the 3–4 second "hang" typically caused by waiting for a sleeping GPU to power up
 *   **Power Efficiency:** By blocking access at the syscall level, the GPU is never woken from its lowest power state (D3cold), extending battery life for laptops
 *   **Non-Invasive:** Unlike traditional methods that might require driver unloading, risky unbind or complex X11/Wayland configurations, this approach is transparent to the rest of the system and easily toggled
-*   Also works with games
+*   _Also works with games_
 
 ## Project Structure
-
+- `crates/cardwire-cli`: User CLI to interact with the daemon
 - `crates/cardwire-core`: Low-level GPU manager and IOMMU discovery
 - `crates/cardwire-daemon`: System daemon managing state and D-Bus communication
-- `crates/cardwire-cli`: User CLI to interact with the daemon
 - `crates/cardwire-ebpf`: BPF program and LSM hooks
 
 ## Notes
-- I'm not a senior dev,, if you think the code is objectively bad, feel free to make a PR
-- Credits to asus-linux discord for helping me find this ebpf method
-
-## References used
-- https://docs.ebpf.io/
-- CaelestiaShell for the flake.nix part
+- I'm still learning rust, if some parts of the code is bad/unoptimized, feel free to make a PR
+## Credits
+- Asus-linux discord for helping me find the ebpf method
+- Caelestia shell for the flake.nix, i used it as a reference
 
 ## License
 
