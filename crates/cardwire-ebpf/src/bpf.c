@@ -82,14 +82,21 @@ struct {
 	__type(value, __u8);
 } BLOCKED_PCI SEC(".maps");
 
-/* Safely read and compare kernel qstr, may be useless */
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 64);
+	__type(key, __u32);
+	__type(value, __u8);
+} SETTINGS SEC(".maps");
+
+/* Safely read and compare kernel qstr */
 static __always_inline int qstr_eq(struct qstr q, const char *name, __u32 len)
 {
 	if (!q.name || q.len != len) {
 		return 0;
 	}
 
-	char buf[8] = {}; // Big enough for "dri", "dev", "/"
+	char buf[32] = {};
 	if (len >= sizeof(buf)) {
 		return 0;
 	}
@@ -212,6 +219,19 @@ static __always_inline int is_blocked_device(struct dentry *d)
 		}
 	}
 	struct qstr q = BPF_CORE_READ(d, d_name);
+	// Blocks vulkan nvidia_icd, it's dangerous and will only work if one nvidia gpu is blocked
+	__u32 block_vulkan_key = 0;
+	if (bpf_map_lookup_elem(&SETTINGS, &block_vulkan_key)) {
+		if (qstr_eq(q, "nvidia_icd.json", 15) ||
+		    qstr_eq(q, "nvidia_icd.x86_64.json", 22)) {
+			__u32 id0 = 0, id1 = 1;
+			if (bpf_map_lookup_elem(&BLOCKED_NVIDIAID, &id0) &&
+			    !bpf_map_lookup_elem(&BLOCKED_NVIDIAID, &id1)) {
+				return -ENOENT;
+			}
+		}
+	}
+
 	if (qstr_eq(q, "config", 6)) {
 		char pci_addr[16] = {};
 		if (get_pci_addr(d, pci_addr, sizeof(pci_addr)) != 0) {

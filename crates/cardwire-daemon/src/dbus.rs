@@ -44,10 +44,10 @@ impl Daemon {
             Modes::Manual => {}
         }
 
-        *current_config = Config { mode };
+        current_config.mode = mode;
 
-        if let Err(err) = current_config.save_mode_to_config() {
-            warn!("Failed to save mode to config: {}", err);
+        if let Err(err) = current_config.save_config() {
+            warn!("Failed to save config: {}", err);
         }
         info!("Switched to {}", mode);
         Ok(())

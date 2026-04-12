@@ -243,4 +243,19 @@ impl EbpfBlocker {
             Err(err) => Err(CardwireEbpfError::aya(err)),
         }
     }
+
+    pub fn set_vulkan_block(&mut self, block: bool) -> CardwireEbpfResult<()> {
+        let mut map: HashMap<_, u32, u8> = HashMap::try_from(
+            self.ebpf
+                .map_mut("SETTINGS")
+                .ok_or_else(|| Self::missing_entity("map", "SETTINGS"))?,
+        )
+        .map_err(CardwireEbpfError::aya)?;
+        if block {
+            map.insert(0, 1, 0).map_err(CardwireEbpfError::aya)?;
+        } else {
+            let _ = map.remove(&0);
+        }
+        Ok(())
+    }
 }

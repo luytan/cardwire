@@ -7,7 +7,10 @@ const CONFIG_PATH: &str = "/var/lib/cardwire/cardwire.toml";
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
+    #[serde(default)]
     pub mode: Modes,
+    #[serde(default)]
+    pub block_vulkan: bool,
 }
 
 impl Config {
@@ -22,7 +25,7 @@ impl Config {
                         CONFIG_PATH, err
                     );
                     let config = Config::default();
-                    if let Err(save_err) = config.save_mode_to_config() {
+                    if let Err(save_err) = config.save_config() {
                         warn!(
                             "Failed to save default config to {}: {}",
                             CONFIG_PATH, save_err
@@ -37,7 +40,7 @@ impl Config {
                     CONFIG_PATH, err
                 );
                 let config = Config::default();
-                if let Err(save_err) = config.save_mode_to_config() {
+                if let Err(save_err) = config.save_config() {
                     warn!(
                         "Failed to save default config to {}: {}",
                         CONFIG_PATH, save_err
@@ -48,7 +51,7 @@ impl Config {
         }
     }
 
-    pub fn save_mode_to_config(&self) -> anyhow::Result<()> {
+    pub fn save_config(&self) -> anyhow::Result<()> {
         let toml: String = toml::to_string(self)?;
         let config_path = PathBuf::from(CONFIG_PATH);
         if let Some(parent) = config_path.parent() {
@@ -66,6 +69,7 @@ impl Default for Config {
             // it is the most safe option since it doesnt assume the laptop/workstation
             // configuration
             mode: Modes::Manual,
+            block_vulkan: false,
         }
     }
 }

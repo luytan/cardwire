@@ -9,10 +9,11 @@ use std::{collections::HashMap, fmt};
 use tokio::sync::RwLock;
 use zbus::fdo::Error;
 
-#[derive(Deserialize, Serialize, PartialEq, zbus::zvariant::Type, Clone, Copy)]
+#[derive(Deserialize, Serialize, PartialEq, zbus::zvariant::Type, Clone, Copy, Default)]
 pub enum Modes {
     Integrated,
     Hybrid,
+    #[default]
     Manual,
 }
 
@@ -53,6 +54,9 @@ impl Daemon {
         let gpu_list = gpu::read_gpu(&pci_devices)?;
         // TODO: what if ebpf crash
         let mut ebpf_blocker = GpuBlocker::new()?;
+
+        // Apply config block_vulkan at startup
+        ebpf_blocker.set_vulkan_block(config.block_vulkan)?;
 
         // Apply config mode at startup
         // TODO: use already existing function set_mode()

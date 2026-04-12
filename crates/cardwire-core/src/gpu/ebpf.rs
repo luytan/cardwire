@@ -14,6 +14,11 @@ impl GpuBlocker {
             inner: EbpfBlocker::new()?,
         })
     }
+
+    pub fn set_vulkan_block(&mut self, block: bool) -> GpuResult<()> {
+        self.inner.set_vulkan_block(block).map_err(map_gpu_error)?;
+        Ok(())
+    }
 }
 
 pub fn is_gpu_blocked(blocker: &GpuBlocker, gpu: &Gpu) -> GpuResult<bool> {
