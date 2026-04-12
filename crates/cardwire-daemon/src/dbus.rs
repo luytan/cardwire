@@ -1,6 +1,4 @@
-use crate::{
-    config::Config, models::{Daemon, Modes}
-};
+use crate::models::{Daemon, Modes};
 use cardwire_core::gpu::{GpuRow, block_gpu, is_gpu_blocked};
 use log::{error, info, warn};
 use zbus::{fdo, interface};
