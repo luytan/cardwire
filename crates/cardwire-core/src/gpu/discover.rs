@@ -54,21 +54,85 @@ fn build_gpu(device: &PciDevice) -> io::Result<Gpu> {
         nvidia_minor,
     })
 }
-
+/// Try to read from sysfs first, then fallback to udev /dev/dri,
+/// with a sleep at each attempt so the system has time to spawn the drm nodes.
+/// May block for up to ~5s per path (10 retries × 500ms).
 fn drm_node_path(pci_address: &str, node_kind: &str) -> io::Result<u32> {
-    let mut node_kind: String = node_kind.to_string();
-    let by_path = format!("/dev/dri/by-path/pci-{pci_address}-{node_kind}");
-    let kind_path = fs::canonicalize(&by_path)?;
-    let file_name = kind_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid device path"))?;
-    if node_kind == "render" {
-        node_kind = "renderD".to_string();
+    const MAX_RETRIES: u32 = 10;
+    const RETRY_INTERVAL: std::time::Duration = std::time::Duration::from_millis(500);
+
+    let kind_prefix = match node_kind {
+        "render" => "renderD",
+        other => other,
+    };
+    let sysfs_drm_path = format!("/sys/bus/pci/devices/{}/drm", pci_address);
+    let udev_drm_path = format!("/dev/dri/by-path/pci-{pci_address}-{node_kind}");
+    let mut last_err: Option<io::Error> = None;
+
+    for attempt in 1..=MAX_RETRIES {
+        if let Ok(entries) = fs::read_dir(&sysfs_drm_path) {
+            for entry in entries.flatten() {
+                let file_name = entry.file_name();
+                let name = file_name.to_string_lossy();
+                let kind_number = name.strip_prefix(kind_prefix).unwrap_or_default();
+                let is_match = (kind_prefix == "renderD" && name.starts_with("renderD"))
+                    || (kind_prefix == "card" && name.starts_with("card") && !name.contains('-'));
+                if is_match {
+                    info!(
+                        "Successfully read {}{} from sysfs for {}",
+                        kind_prefix, kind_number, pci_address
+                    );
+                    return kind_number.parse::<u32>().map_err(|_| {
+                        io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("Failed to parse DRM node number from '{name}'"),
+                        )
+                    });
+                }
+            }
+            break;
+        }
+        warn!(
+            "Could not find drm {} for pci {}, attempt: {}/{MAX_RETRIES}, retrying in 500ms",
+            kind_prefix, pci_address, attempt
+        );
+        std::thread::sleep(RETRY_INTERVAL);
     }
-    let kind_number = file_name.strip_prefix(&node_kind).unwrap_or_default();
-    Ok(kind_number.parse::<u32>().unwrap_or(999))
+    warn!(
+        "Could not read {} drm {} from sysfs, falling back to /dev/dri",
+        pci_address, kind_prefix
+    );
+    for attempt in 1..=MAX_RETRIES {
+        match fs::canonicalize(&udev_drm_path) {
+            Ok(kind_path) => {
+                let file_name =
+                    kind_path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .ok_or_else(|| {
+                            io::Error::new(io::ErrorKind::InvalidData, "Invalid device path")
+                        })?;
+                let kind_number = file_name.strip_prefix(kind_prefix).unwrap_or_default();
+                return kind_number.parse::<u32>().map_err(|_| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("Failed to parse DRM node number from '{file_name}'"),
+                    )
+                });
+            }
+            Err(err) => {
+                warn!(
+                    "Could not find {} node for {}: {}, attempt: {}/{MAX_RETRIES}, retrying in 500ms",
+                    kind_prefix, pci_address, err, attempt
+                );
+                last_err = Some(err);
+                std::thread::sleep(RETRY_INTERVAL);
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| io::Error::new(io::ErrorKind::NotFound, "Node not found")))
 }
+
 fn nvidia_get_minor(pci_address: &str) -> Option<u32> {
     let nvidia_driver_proc = Path::new("/proc/driver/nvidia/gpus/")
         .join(pci_address)
