@@ -173,6 +173,8 @@ pub fn check_default_drm_class(gpu_list: &mut HashMap<usize, Gpu>) -> io::Result
         desktop_displays: usize,
         total_displays: usize,
         connected_displays: usize,
+        connected_internal: usize,
+        connected_desktop: usize,
     }
 
     let mut stats: HashMap<usize, GpuStats> = HashMap::new();
@@ -186,26 +188,35 @@ pub fn check_default_drm_class(gpu_list: &mut HashMap<usize, Gpu>) -> io::Result
                 //
                 if let Ok(status) = fs::read_to_string(&status_path) {
                     stat.total_displays += 1;
-                    if status.trim() == "connected" {
+                    let is_connected = status.trim() == "connected";
+                    if is_connected {
                         stat.connected_displays += 1;
                     }
                     if drm.starts_with("eDP") {
                         stat.internal_displays += 1;
+                        if is_connected {
+                            stat.connected_internal += 1;
+                        }
                     } else {
                         stat.desktop_displays += 1;
+                        if is_connected {
+                            stat.connected_desktop += 1;
+                        }
                     }
                 }
             }
         }
 
         info!(
-            "gpu {} id: {} internal: {}, desktop: {}, connected: {}, total: {}",
+            "gpu {} id: {} internal: {}, desktop: {}, connected: {}, total: {}, connected_internal: {}, connected_desktop: {}",
             gpu.name,
             id,
             stat.internal_displays,
             stat.desktop_displays,
             stat.connected_displays,
-            stat.total_displays
+            stat.total_displays,
+            stat.connected_internal,
+            stat.connected_desktop
         );
 
         stats.insert(*id, stat);
@@ -215,10 +226,11 @@ pub fn check_default_drm_class(gpu_list: &mut HashMap<usize, Gpu>) -> io::Result
         .iter()
         .max_by_key(|&(_, stats)| {
             (
+                stats.connected_internal,
+                stats.connected_desktop,
                 stats.internal_displays,
                 stats.desktop_displays,
                 stats.total_displays,
-                stats.connected_displays,
             )
         })
         .unzip();
