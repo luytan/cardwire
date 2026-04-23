@@ -16,7 +16,8 @@ jobs:
       - name: Fix kernel header
         run: |
           sudo apt update
-          sudo apt install -y linux-headers-$(uname -r)
+          sudo apt install -y linux-headers-$(uname -r) \
+          libbpf-dev
           sudo ln -s /usr/include/x86_64-linux-gnu/asm /usr/include/asm
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
