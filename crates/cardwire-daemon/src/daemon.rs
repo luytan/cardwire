@@ -2,9 +2,9 @@ mod config;
 mod dbus;
 mod models;
 
-use crate::models::Daemon;
-use anyhow::Result;
-use config::Config;
+use crate::{config::CardwireModeState, models::Daemon};
+use anyhow::{Context, Result};
+use config::{CardwireConfig, CardwireGpuState};
 use log::info;
 use std::future::pending;
 use zbus::connection;
@@ -15,7 +15,10 @@ async fn main() -> Result<()> {
         .format_timestamp_nanos()
         .filter_level(log::LevelFilter::Info)
         .init();
-    let daemon = Daemon::new(Config::new().await)?;
+    let config = CardwireConfig::build().context("Error building config")?;
+    let gpu_state = CardwireGpuState::build().context("Error building gpu_state")?;
+    let mode_state = CardwireModeState::build().context("Error building mode_state")?;
+    let daemon = Daemon::new(config, gpu_state, mode_state)?;
 
     let conn_builder = connection::Builder::system()?;
     let _conn = conn_builder

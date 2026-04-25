@@ -1,75 +1,189 @@
 use crate::models::Modes;
-use log::warn;
+use anyhow::{Context, Ok};
+use cardwire_core::gpu::{Gpu, GpuBlocker, is_gpu_blocked};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
-use tokio::fs;
-const CONFIG_PATH: &str = "/var/lib/cardwire/cardwire.toml";
+use serde_json;
+use std::{collections::HashMap, fs};
+use zbus::zvariant::Str;
+const CONFIG_PATH: &str = "/etc/cardwire";
+const STATE_PATH: &str = "/var/lib/cardwire";
 
+enum FileKind {
+    Config,
+    GpuState,
+    ModeState,
+    PciState,
+}
+// TODO: Handle fs error for tomorrow
 #[derive(Deserialize, Serialize)]
-pub struct Config {
-    #[serde(default)]
-    pub mode: Modes,
-    #[serde(default)]
-    pub block_vulkan: bool,
+pub struct CardwireConfig {
+    block_nvidia_vulkan: bool,
 }
 
-impl Config {
-    pub async fn new() -> Config {
-        let config_path = Path::new(self::CONFIG_PATH);
-        match fs::read_to_string(config_path).await {
-            Ok(content) => match toml::from_str(&content) {
-                Ok(config) => config,
-                Err(err) => {
-                    warn!(
-                        "Invalid config file at {}: {}. Recreating default config.",
-                        CONFIG_PATH, err
-                    );
-                    let config = Config::default();
-                    if let Err(save_err) = config.save_config() {
-                        warn!(
-                            "Failed to save default config to {}: {}",
-                            CONFIG_PATH, save_err
-                        );
-                    }
-                    config
-                }
-            },
-            Err(err) => {
-                warn!(
-                    "Could not read config at {}: {}. Creating default config.",
-                    CONFIG_PATH, err
-                );
-                let config = Config::default();
-                if let Err(save_err) = config.save_config() {
-                    warn!(
-                        "Failed to save default config to {}: {}",
-                        CONFIG_PATH, save_err
-                    );
-                }
-                config
-            }
-        }
+impl CardwireConfig {
+    /// Read TOML config file and return it's settings as a struct
+    // TODO: Error handling on std::fs
+    pub fn build() -> anyhow::Result<CardwireConfig> {
+        let config_file = format!("{}/cardwire.toml", CONFIG_PATH);
+        Ok(Self::parse_config(&config_file)?)
     }
+    /// Parse the .toml file into a CardwireConfig
+    fn parse_config(config_file: &str) -> anyhow::Result<CardwireConfig> {
+        if !(fs::exists(config_file)?) {
+            Self::create_default_config().context("Could not create default dir")?;
+        };
+        let config_content =
+            fs::read_to_string(config_file).context("Could not read cardwire.toml")?;
+        Ok(toml::from_str(&config_content).context("Failed to parse the toml config")?)
+    }
+    /// Create a default cardwire.toml if not present
+    fn create_default_config() -> anyhow::Result<()> {
+        create_default_file(FileKind::Config)?;
+        Ok(())
+    }
+    /// Return block_vulkan value
+    pub fn block_nvidia_vulkan(&self) -> &bool {
+        &self.block_nvidia_vulkan
+    }
+}
 
-    pub fn save_config(&self) -> anyhow::Result<()> {
-        let toml: String = toml::to_string(self)?;
-        let config_path = PathBuf::from(CONFIG_PATH);
-        if let Some(parent) = config_path.parent() {
-            std::fs::create_dir_all(parent)?;
+// This is the easiest way i found to have a good looking json, might change later
+#[derive(Serialize, Deserialize)]
+pub struct CardwireGpuState {
+    gpu: HashMap<String, CardwireGpuUnit>,
+}
+// A gpu contain a pci and a blocked state,
+// TODO: A more precise way to identify a GPU, but not dangerous since cardwire does not block
+// default gpu
+#[derive(Serialize, Deserialize)]
+struct CardwireGpuUnit {
+    block: bool,
+}
+
+impl CardwireGpuState {
+    pub fn build() -> anyhow::Result<CardwireGpuState> {
+        let state_file = format!("{STATE_PATH}/gpu_state.json");
+        Ok(Self::parse_gpu_state(&state_file).context("Failed to parse the gpu_state.json")?)
+    }
+    // Parse directly into CardwireGpuState
+    fn parse_gpu_state(state_file: &str) -> anyhow::Result<CardwireGpuState> {
+        if !(fs::exists(state_file)?) {
+            Self::create_default_state().context("Could not create default gpu_state.json")?;
+        };
+        let gpu_state = fs::read_to_string(state_file)
+            .with_context(|| format!("Could not read file {}", state_file))?;
+
+        let content: CardwireGpuState =
+            serde_json::from_str(&gpu_state).context("Could not parse string into json")?;
+        Ok(content)
+    }
+    /// Create default gpu_state.json, including folders if missing
+    fn create_default_state() -> anyhow::Result<()> {
+        create_default_file(FileKind::GpuState)?;
+        Ok(())
+    }
+    /// Save the new state into the daemon and to the gpu_state.json file
+    pub fn save_state(
+        &mut self,
+        gpu_list: &HashMap<usize, Gpu>,
+        blocker: &GpuBlocker,
+    ) -> anyhow::Result<()> {
+        // Prevent overwriting default config if it's not replaceable
+        if self.gpu.contains_key("Null") {
+            info!("detected default gpu_state file, overwriting it...");
+            self.gpu.clear();
+        } else {
+            return Err(anyhow::format_err!(
+                "gpu_liste is empty, aborting gpu_state.json creation"
+            ));
         }
-        std::fs::write(CONFIG_PATH, toml)?;
+        // Save to daemon state
+        for (_, gpu) in gpu_list {
+            self.gpu.insert(
+                gpu.pci.clone(),
+                CardwireGpuUnit {
+                    block: is_gpu_blocked(&blocker, &gpu)?,
+                },
+            );
+        }
+        // Save the whole state into the json
+        let state_file = serde_json::to_string_pretty(&self.gpu)?;
+        fs::write(format!("{STATE_PATH}/gpu_state.json"), state_file)?;
         Ok(())
     }
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            // Default to manual mode,
-            // it is the most safe option since it doesnt assume the laptop/workstation
-            // configuration
-            mode: Modes::Manual,
-            block_vulkan: false,
-        }
+#[derive(Serialize, Deserialize)]
+pub struct CardwireModeState {
+    mode: Modes,
+}
+impl CardwireModeState {
+    /// Read a gpu_state.json file and return into a struct
+    pub fn build() -> anyhow::Result<CardwireModeState> {
+        let mode_file = format!("{STATE_PATH}/mode_state.json");
+        Ok(Self::parse_mode_state(&mode_file)?)
     }
+    fn parse_mode_state(mode_file: &str) -> anyhow::Result<CardwireModeState> {
+        if !(fs::exists(mode_file)?) {
+            Self::create_default_mode()?;
+        };
+        let mode_state = fs::read_to_string(mode_file)?;
+        let string_content: CardwireModeState =
+            serde_json::from_str(&mode_state).context("Failed to parse json to str")?;
+        //let content: Modes = Modes::parse(string_content).with_context(|| format!("Failed to
+        // parse to mode {:?}", string_content))?;
+        Ok(string_content)
+    }
+    fn create_default_mode() -> anyhow::Result<()> {
+        create_default_file(FileKind::ModeState)?;
+        Ok(())
+    }
+    pub fn mode(&self) -> Modes {
+        return self.mode;
+    }
+    /// Save the new mode into the daemon and to the mode_state.json file
+    pub fn save_state(&mut self, new_mode: Modes) -> anyhow::Result<()> {
+        // Save to daemon state
+        self.mode = new_mode;
+        // Save the whole state into the json
+        let state_file = serde_json::to_string_pretty(&self.mode())?;
+        fs::write(format!("{STATE_PATH}/mode_state.json"), state_file)?;
+        Ok(())
+    }
+}
+/// Helper function to create default file, used for all config struct
+fn create_default_file(kind: FileKind) -> anyhow::Result<()> {
+    match kind {
+        FileKind::Config => {
+            let _ = fs::create_dir_all(CONFIG_PATH);
+            let default_config: &str = r#"block_nvidia_vulkan = false"#;
+            fs::write(format!("{}/cardwire.toml", CONFIG_PATH), default_config)
+        }
+        FileKind::GpuState => {
+            let _ = fs::create_dir_all(STATE_PATH);
+            let mut defaut_hash: HashMap<String, CardwireGpuUnit> = HashMap::new();
+            let _ = defaut_hash.insert("Null".to_string(), CardwireGpuUnit { block: false });
+            let default_state = CardwireGpuState { gpu: defaut_hash };
+            let default_gpu_state = serde_json::to_string_pretty(&default_state)?;
+            fs::write(format!("{}/gpu_state.json", STATE_PATH), default_gpu_state)
+        }
+        FileKind::ModeState => {
+            let _ = fs::create_dir_all(STATE_PATH);
+            let default_state = CardwireModeState {
+                mode: Modes::Manual,
+            };
+            let default_mode_state = serde_json::to_string_pretty(&default_state)?;
+            fs::write(
+                format!("{}/mode_state.json", STATE_PATH),
+                default_mode_state,
+            )
+        }
+        FileKind::PciState => {
+            let _ = fs::create_dir_all(STATE_PATH);
+            let default_state = r#"{}"#;
+            fs::write(format!("{}/pci_state.json", STATE_PATH), default_state)
+        }
+    }?;
+    Ok(())
 }

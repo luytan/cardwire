@@ -12,7 +12,7 @@ impl Daemon {
         // Valide inputs and turn into a Modes
         let mode = Modes::parse(&mode)?;
         // Get current_config lock
-        let mut current_config = self.state.config.write().await;
+        let mut current_mode = self.state.mode_state.write().await;
 
         match mode {
             // Integrated/Hybrid only works on laptop with two gpus, will refuse if the computer has
@@ -42,17 +42,14 @@ impl Daemon {
             Modes::Manual => {}
         }
 
-        current_config.mode = mode;
-
-        if let Err(err) = current_config.save_config() {
-            warn!("Failed to save config: {}", err);
-        }
+        let _ = current_mode.save_state(mode);
         info!("Switched to {}", mode);
         Ok(())
     }
 
     pub(crate) async fn get_mode(&self) -> String {
-        format!("Current Mode: {}", self.state.mode().await)
+        let current_mode = self.state.mode_state.read().await;
+        format!("Current Mode: {}", current_mode.mode())
     }
 
     pub(crate) async fn set_gpu_block(&self, gpu_id: u32, block: bool) -> fdo::Result<()> {
