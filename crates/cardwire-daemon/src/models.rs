@@ -61,12 +61,11 @@ pub struct Daemon {
 }
 
 impl Daemon {
-    pub fn new(
-        config: CardwireConfig,
-        mut gpu_state: CardwireGpuState,
-        mode_state: CardwireModeState,
-    ) -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let iommu: bool = pci::is_iommu_enabled();
+        let config = CardwireConfig::build().context("Error building config")?;
+        let mut gpu_state = CardwireGpuState::build().context("Error building gpu_state")?;
+        let mode_state = CardwireModeState::build().context("Error building config")?;
         // TODO: Exit if no pci devices or manual refresh command
         let pci_devices = pci::read_pci_devices()?;
         // TODO: Should the daemon exits if no gpu??
