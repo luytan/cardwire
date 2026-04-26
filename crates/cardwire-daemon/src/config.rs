@@ -31,7 +31,7 @@ impl CardwireConfig {
     fn parse_config(config_file: &str) -> anyhow::Result<CardwireConfig> {
         if !(fs::exists(config_file)?) {
             Self::create_default_config().context("Could not create default dir")?;
-        };
+        }
         let config_content =
             fs::read_to_string(config_file).context("Could not read cardwire.toml")?;
         Ok(toml::from_str(&config_content).context("Failed to parse the toml config")?)
@@ -75,7 +75,7 @@ impl CardwireGpuState {
     fn parse_gpu_state(state_file: &str) -> anyhow::Result<HashMap<String, CardwireGpuUnit>> {
         if !(fs::exists(state_file)?) {
             Self::create_default_state().context("Could not create default gpu_state.json")?;
-        };
+        }
         let gpu_state = fs::read_to_string(state_file)
             .with_context(|| format!("Could not read file {}", state_file))?;
 
@@ -139,7 +139,7 @@ impl CardwireModeState {
     fn parse_mode_state(mode_file: &str) -> anyhow::Result<CardwireModeState> {
         if !(fs::exists(mode_file)?) {
             Self::create_default_mode()?;
-        };
+        }
         let mode_state = fs::read_to_string(mode_file)?;
         let string_content: CardwireModeState =
             serde_json::from_str(&mode_state).context("Failed to parse json to str")?;

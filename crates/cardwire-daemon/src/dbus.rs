@@ -41,19 +41,12 @@ impl Daemon {
             // Else apply the gpu_state but still unblock other gpus
             Modes::Manual => {
                 let config = self.state.config.read().await;
-                if config.auto_apply_gpu_state() {
-                    let gpu_state = self.state.gpu_state.read().await;
-                    for gpu in self.state.gpu_list.values() {
-                        if gpu_state.gpu_block_state(&gpu.pci) {
-                            block_gpu(&mut blocker, gpu, true)
-                                .map_err(|e| fdo::Error::Failed(e.to_string()))?;
-                        } else {
-                            block_gpu(&mut blocker, gpu, false)
-                                .map_err(|e| fdo::Error::Failed(e.to_string()))?;
-                        }
-                    }
-                } else {
-                    for gpu in self.state.gpu_list.values() {
+                let gpu_state = self.state.gpu_state.read().await;
+                for gpu in self.state.gpu_list.values() {
+                    if gpu_state.gpu_block_state(&gpu.pci) && config.auto_apply_gpu_state() {
+                        block_gpu(&mut blocker, gpu, true)
+                            .map_err(|e| fdo::Error::Failed(e.to_string()))?;
+                    } else {
                         block_gpu(&mut blocker, gpu, false)
                             .map_err(|e| fdo::Error::Failed(e.to_string()))?;
                     }
