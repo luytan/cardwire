@@ -1,7 +1,7 @@
 use crate::models::Modes;
 use anyhow::{Context, Ok};
 use cardwire_core::gpu::{Gpu, GpuBlocker, is_gpu_blocked};
-use log::info;
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, io};
 const CONFIG_PATH: &str = "/etc/cardwire";
@@ -65,10 +65,16 @@ struct CardwireGpuUnit {
 }
 
 impl CardwireGpuState {
+    /// Build a CardwireGpuState struct
     pub fn build() -> anyhow::Result<CardwireGpuState> {
         let state_file = format!("{STATE_PATH}/gpu_state.json");
-        let gpu_hash =
-            Self::parse_gpu_state(&state_file).context("Failed to parse the gpu_state.json")?;
+
+        let gpu_hash = Self::parse_gpu_state(&state_file);
+        if let Err(e) = gpu_hash {
+            warn!("gpu_hash.json could not get parsed {e}, overwriting with default one...");
+            Self::create_default_state()?;
+        }
+        let gpu_hash = Self::parse_gpu_state(&state_file).context("couldn't fix gpu_hash.json")?;
         let gpu_state = CardwireGpuState { gpu: gpu_hash };
         Ok(gpu_state)
     }
@@ -132,10 +138,17 @@ pub struct CardwireModeState {
     mode: Modes,
 }
 impl CardwireModeState {
-    /// Read a gpu_state.json file and return into a struct
+    /// Read a mode.json file and return into a struct
     pub fn build() -> anyhow::Result<CardwireModeState> {
         let mode_file = format!("{STATE_PATH}/mode.json");
-        Ok(Self::parse_mode_state(&mode_file)?)
+
+        let mode = Self::parse_mode_state(&mode_file);
+        if let Err(e) = mode {
+            warn!("mode.json could not get parsed {e}, overwriting with default one...");
+            Self::create_default_mode()?;
+        }
+        let mode = Self::parse_mode_state(&mode_file).context("couldn't fix mode.json")?;
+        Ok(mode)
     }
     fn parse_mode_state(mode_file: &str) -> anyhow::Result<CardwireModeState> {
         if !(fs::exists(mode_file)?) {
