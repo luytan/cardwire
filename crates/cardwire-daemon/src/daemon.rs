@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
         .init();
     let config = CardwireConfig::build().context("Error building config")?;
     let gpu_state = CardwireGpuState::build().context("Error building gpu_state")?;
-    let mode_state = CardwireModeState::build().context("Error building mode_state")?;
+    let mode_state = CardwireModeState::build().context("Error building config")?;
     let daemon = Daemon::new(config, gpu_state, mode_state)?;
 
     let conn_builder = connection::Builder::system()?;

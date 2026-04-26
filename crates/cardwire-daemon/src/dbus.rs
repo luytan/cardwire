@@ -11,6 +11,7 @@ impl Daemon {
     pub(crate) async fn set_mode(&self, mode: String) -> fdo::Result<()> {
         // Valide inputs and turn into a Modes
         let mode = Modes::parse(&mode)?;
+        let mut blocker = self.state.ebpf_blocker.write().await;
         // Get current_config lock
         let mut current_mode = self.state.mode_state.write().await;
 
@@ -29,7 +30,6 @@ impl Daemon {
                     )));
                 }
                 // Loop to find the non default gpu and block it,
-                let mut blocker = self.state.ebpf_blocker.write().await;
                 for gpu in self.state.gpu_list.values() {
                     if !gpu.is_default() {
                         block_gpu(&mut blocker, gpu, mode == Modes::Integrated)
@@ -37,11 +37,29 @@ impl Daemon {
                     };
                 }
             }
-            // Mode manual should return all gpus to a non blocked state and allow gpu <id> block
-            // on/off
-            Modes::Manual => {}
+            // If the auto apply is false, return all gpus to unblocked
+            // Else apply the gpu_state but still unblock other gpus
+            Modes::Manual => {
+                let config = self.state.config.read().await;
+                if config.auto_apply_gpu_state() {
+                    let gpu_state = self.state.gpu_state.read().await;
+                    for (_, gpu) in &self.state.gpu_list {
+                        if gpu_state.gpu_block_state(&gpu.pci) {
+                            block_gpu(&mut blocker, gpu, true)
+                                .map_err(|e| fdo::Error::Failed(e.to_string()))?;
+                        } else {
+                            block_gpu(&mut blocker, gpu, false)
+                                .map_err(|e| fdo::Error::Failed(e.to_string()))?;
+                        }
+                    }
+                } else {
+                    for (_, gpu) in &self.state.gpu_list {
+                        block_gpu(&mut blocker, gpu, false)
+                            .map_err(|e| fdo::Error::Failed(e.to_string()))?;
+                    }
+                }
+            }
         }
-
         let _ = current_mode.save_state(mode);
         info!("Switched to {}", mode);
         Ok(())
@@ -75,7 +93,10 @@ impl Daemon {
         block_gpu(&mut blocker, gpu, block).map_err(|err| fdo::Error::Failed(err.to_string()))?;
 
         info!("Set GPU {} ({}) block={}", gpu_id, gpu.pci_address(), block);
-
+        let mut gpu_state = self.state.gpu_state.write().await;
+        let _ = gpu_state
+            .save_state(&self.state.gpu_list, &blocker)
+            .map_err(|e| fdo::Error::Failed(e.to_string()))?;
         Ok(())
     }
 

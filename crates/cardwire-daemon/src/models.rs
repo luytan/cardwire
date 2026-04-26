@@ -79,7 +79,7 @@ impl Daemon {
         let mut ebpf_blocker = GpuBlocker::new()?;
         // Do not stop the program if there is no gpu, cardwire will also be usable as a pci manager
         // in a near future
-        if !gpu_list.is_empty() {
+        if !gpu_list.is_empty() && gpu_state.is_default_state() {
             let _ = gpu_state
                 .save_state(&gpu_list, &ebpf_blocker)
                 .context("Could not save gpu state")?;
@@ -88,7 +88,7 @@ impl Daemon {
         }
 
         // TODO: Move to daemon.rs, should not be applied at new
-        ebpf_blocker.set_vulkan_block(*config.block_nvidia_vulkan())?;
+        ebpf_blocker.set_vulkan_block(config.block_nvidia_vulkan())?;
 
         Ok(Self {
             state: DaemonState {
