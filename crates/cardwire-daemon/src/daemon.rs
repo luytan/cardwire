@@ -10,8 +10,9 @@ use zbus::connection;
 #[tokio::main]
 async fn main() -> Result<()> {
     // log
-    env_logger::builder()
-        .format_timestamp_nanos()
+    env_logger::Builder::from_default_env()
+        .format_target(false)
+        .format_timestamp(None)
         .filter_level(log::LevelFilter::Info)
         .init();
     let mut daemon = Daemon::new().await?;

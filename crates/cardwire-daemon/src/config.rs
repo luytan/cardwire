@@ -26,7 +26,7 @@ impl CardwireConfig {
     // TODO: Error handling on std::fs
     pub fn build() -> anyhow::Result<CardwireConfig> {
         let config_file = format!("{}/cardwire.toml", CONFIG_PATH);
-        Ok(Self::parse_config(&config_file)?)
+        Self::parse_config(&config_file)
     }
     /// Parse the .toml file into a CardwireConfig
     fn parse_config(config_file: &str) -> anyhow::Result<CardwireConfig> {
@@ -157,8 +157,6 @@ impl CardwireModeState {
         let mode_state = fs::read_to_string(mode_file)?;
         let string_content: CardwireModeState =
             serde_json::from_str(&mode_state).context("Failed to parse json to str")?;
-        //let content: Modes = Modes::parse(string_content).with_context(|| format!("Failed to
-        // parse to mode {:?}", string_content))?;
         Ok(string_content)
     }
     fn create_default_mode() -> anyhow::Result<()> {
@@ -255,6 +253,7 @@ fn create_default_folder(kind: FileKind) -> anyhow::Result<()> {
         let _ = match e.kind() {
             io::ErrorKind::PermissionDenied => return Err(e.into()),
             io::ErrorKind::ReadOnlyFilesystem => return Err(e.into()),
+            io::ErrorKind::NotADirectory => return Err(e.into()),
             _ => Ok(()),
         };
     }
