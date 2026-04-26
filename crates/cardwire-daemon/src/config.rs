@@ -170,7 +170,7 @@ fn create_default_file(kind: FileKind) -> anyhow::Result<()> {
         FileKind::Config => {
             let _ = fs::create_dir_all(CONFIG_PATH);
             let default_config = toml::to_string_pretty(&CardwireConfig {
-                auto_apply_gpu_state: false,
+                auto_apply_gpu_state: true,
                 block_nvidia_vulkan: false,
             })?;
             fs::write(format!("{}/cardwire.toml", CONFIG_PATH), default_config)
